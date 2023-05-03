@@ -2,7 +2,8 @@ version: "3"
 
 services:
   migrations:
-    image: mediacms/mediacms:latest
+    image: mediacms/mediacms:local
+    container_name: migrations
     volumes:
       - ./:/home/mediacms.io/mediacms/
     environment:
@@ -13,7 +14,7 @@ services:
       ENABLE_CELERY_BEAT: 'no'
       ADMIN_USER: 'admin'
       ADMIN_EMAIL: 'admin@localhost'
-      #ADMIN_PASSWORD: 'uncomment_and_set_password_here'
+      ADMIN_PASSWORD: 'password'
     command: "./deploy/docker/prestart.sh"
     restart: on-failure
     depends_on:
@@ -22,11 +23,12 @@ services:
       db:
         condition: service_healthy
   web:
-    image: mediacms/mediacms:latest
+    image: mediacms/mediacms:local
+    container_name: web
     deploy:
       replicas: 1
     ports:
-      - "80:80"
+      - "8000:80"
     volumes:
       - ./:/home/mediacms.io/mediacms/
     environment:
@@ -37,7 +39,8 @@ services:
     depends_on:
       - migrations
   celery_beat:
-    image: mediacms/mediacms:latest
+    image: mediacms/mediacms:local
+    container_name: celery_beat
     volumes:
       - ./:/home/mediacms.io/mediacms/
     environment:
@@ -49,7 +52,8 @@ services:
     depends_on:
       - redis
   celery_worker:
-    image: mediacms/mediacms:latest
+    image: mediacms/mediacms:local
+    container_name: celery_worker
     deploy:
       replicas: 1
     volumes:
@@ -63,6 +67,7 @@ services:
       - migrations
   db:
     image: postgres:13
+    container_name: postgres
     volumes:
       - ../postgres_data:/var/lib/postgresql/data/
     restart: always
@@ -75,11 +80,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
   redis:
     image: "redis:alpine"
+    container_name: redis
     restart: always
     healthcheck:
       test: ["CMD", "redis-cli","ping"]
       interval: 30s
       timeout: 10s
       retries: 3
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: always
+    ports:
+      - 9000:8080
+    depends_on:
+      - db
